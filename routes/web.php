@@ -24,7 +24,6 @@ Route::get('/dashboard', function () {
     return view('dashboard');
 })->name('dashboard');
 
-Route::get('appointments/{appointment}/confirm', ConfirmAppointmentController::class)->name('appointment-confirm');
 Route::get('appointments/{appointment}/confirmed', AppointmentConfirmedController::class)->name('appointment-confirmed');
 
 Route::middleware('auth')->group(function () {

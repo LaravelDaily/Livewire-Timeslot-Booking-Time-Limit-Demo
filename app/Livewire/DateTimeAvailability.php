@@ -17,6 +17,8 @@ class DateTimeAvailability extends Component
 
     public string $startTime = '';
 
+    public ?Appointment $appointment = null;
+
     public function mount(): void
     {
         $this->date = now()->format('Y-m-d');
@@ -40,12 +42,31 @@ class DateTimeAvailability extends Component
             'startTime' => 'required',
         ]);
 
-        $appointment = Appointment::create([
+        $this->appointment = Appointment::create([
             'start_time' => Carbon::parse($this->startTime),
             'reserved_at' => now()
         ]);
 
-        $this->redirectRoute('appointment-confirm', $appointment->id);
+        $this->dispatch('appointmentAdded', [
+            'time' => Carbon::parse($this->appointment->reserved_at)->addMinutes(config('app.appointmentReservationTime'))->unix()
+        ]);
+    }
+
+    public function confirmAppointment(): void
+    {
+        $this->appointment->confirmed = true;
+        $this->appointment->save();
+
+        $this->dispatch('appointmentConfirmed');
+        $this->redirectRoute('appointment-confirmed', $this->appointment->id);
+    }
+
+    public function cancelAppointment()
+    {
+        Appointment::find($this->appointment->id)->delete();
+
+        $this->dispatch('appointmentCancelled');
+        $this->reset('appointment');
     }
 
     protected function getIntervalsAndAvailableTimes(): void
