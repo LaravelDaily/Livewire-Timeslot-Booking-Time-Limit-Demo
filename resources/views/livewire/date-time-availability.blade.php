@@ -37,26 +37,50 @@
                 Reserve
             </button>
         </form>
+    @else
+
+        <div class="@if(!$appointment) hidden @endif"
+             x-data="timer('{{ Carbon::parse($appointment->reserved_at)->addMinutes(config('app.appointmentReservationTime'))->unix() }}')"
+        >
+            <h2 class="text-xl">Confirmation for Appointment at: {{ $appointment?->start_time }}</h2>
+
+            <div class="mt-4 mb-4">
+                <p class="text-center">Please confirm your appointment within the next:</p>
+                <div class="flex items-center justify-center space-x-4 mt-4"
+                     x-init="init();">
+                    <div class="flex flex-col items-center px-4">
+                        <span x-text="time().days" class="text-4xl lg:text-5xl">00</span>
+                        <span class="text-gray-400 mt-2">Days</span>
+                    </div>
+                    <span class="w-[1px] h-24 bg-gray-400"></span>
+                    <div class="flex flex-col items-center px-4">
+                        <span x-text="time().hours" class="text-4xl lg:text-5xl">23</span>
+                        <span class="text-gray-400 mt-2">Hours</span>
+                    </div>
+                    <span class="w-[1px] h-24 bg-gray-400"></span>
+                    <div class="flex flex-col items-center px-4">
+                        <span x-text="time().minutes" class="text-4xl lg:text-5xl">59</span>
+                        <span class="text-gray-400 mt-2">Minutes</span>
+                    </div>
+                    <span class="w-[1px] h-24 bg-gray-400"></span>
+                    <div class="flex flex-col items-center px-4">
+                        <span x-text="time().seconds" class="text-4xl lg:text-5xl">28</span>
+                        <span class="text-gray-400 mt-2">Seconds</span>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4">
+                <button wire:click="confirmAppointment"
+                        class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                    Confirm
+                </button>
+                <button wire:click="cancelAppointment"
+                        class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+                    Cancel
+                </button>
+            </div>
+        </div>
     @endif
-
-    <div class="@if(!$appointment) hidden @endif">
-        <h2 class="text-xl">Confirmation for Appointment at: {{ $appointment?->start_time }}</h2>
-
-        <div class="mt-4 mb-4">
-            You have <span id="time" class="font-bold text-red-800"></span> to confirm this appointment. Otherwise, it
-            will be cancelled.
-        </div>
-        <div class="mt-4">
-            <button wire:click="confirmAppointment"
-                    class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
-                Confirm
-            </button>
-            <button wire:click="cancelAppointment"
-                    class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
-                Cancel
-            </button>
-        </div>
-    </div>
 </div>
 
 @push('scripts')
@@ -74,32 +98,55 @@
             }
         })
 
-        // When appointment is added, we will start a timer to count down
-        window.addEventListener('appointmentAdded', (e) => {
-            let timeBox = document.getElementById('time');
-
-            const eventTime = e.detail[0].time;
-            const currentTime = moment().unix();
-            const diffTime = eventTime - currentTime;
-            let duration = moment.duration(diffTime * 1000, 'milliseconds');
-            const interval = 1000;
-
-            runningInterval = setInterval(function () {
-                duration = moment.duration(duration - interval, 'milliseconds');
-                timeBox.innerHTML = duration.hours() + ":" + duration.minutes() + ":" + duration.seconds()
-
-                if (duration.hours() == 0 && duration.minutes() == 0 && duration.seconds() == 0) {
-                    window.location.href = '{{ route('dashboard') }}';
+        function timer(expiry) {
+            return {
+                expiry: expiry,
+                remaining: null,
+                init() {
+                    this.setRemaining()
+                    setInterval(() => {
+                        this.setRemaining();
+                    }, 1000);
+                },
+                setRemaining() {
+                    const diff = this.expiry - moment().unix();
+                    this.remaining = diff;
+                },
+                days() {
+                    return {
+                        value: this.remaining / 86400,
+                        remaining: this.remaining % 86400
+                    };
+                },
+                hours() {
+                    return {
+                        value: this.days().remaining / 3600,
+                        remaining: this.days().remaining % 3600
+                    };
+                },
+                minutes() {
+                    return {
+                        value: this.hours().remaining / 60,
+                        remaining: this.hours().remaining % 60
+                    };
+                },
+                seconds() {
+                    return {
+                        value: this.minutes().remaining,
+                    };
+                },
+                format(value) {
+                    return ("0" + parseInt(value)).slice(-2)
+                },
+                time() {
+                    return {
+                        days: this.format(this.days().value),
+                        hours: this.format(this.hours().value),
+                        minutes: this.format(this.minutes().value),
+                        seconds: this.format(this.seconds().value),
+                    }
                 }
-            }, interval);
-        });
-
-        // On confirmation or cancellations we'll clear the interval
-        window.addEventListener('appointmentConfirmed', (e) => {
-            clearInterval(runningInterval);
-        });
-        window.addEventListener('appointmentCancelled', (e) => {
-            clearInterval(runningInterval);
-        });
+            }
+        }
     </script>
 @endpush

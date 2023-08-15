@@ -46,10 +46,6 @@ class DateTimeAvailability extends Component
             'start_time' => Carbon::parse($this->startTime),
             'reserved_at' => now()
         ]);
-
-        $this->dispatch('appointmentAdded', [
-            'time' => Carbon::parse($this->appointment->reserved_at)->addMinutes(config('app.appointmentReservationTime'))->unix()
-        ]);
     }
 
     public function confirmAppointment(): void
@@ -57,7 +53,6 @@ class DateTimeAvailability extends Component
         $this->appointment->confirmed = true;
         $this->appointment->save();
 
-        $this->dispatch('appointmentConfirmed');
         $this->redirectRoute('appointment-confirmed', $this->appointment->id);
     }
 
@@ -65,7 +60,6 @@ class DateTimeAvailability extends Component
     {
         Appointment::find($this->appointment->id)->delete();
 
-        $this->dispatch('appointmentCancelled');
         $this->reset('appointment');
     }
 
