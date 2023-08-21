@@ -17,7 +17,7 @@ class DateTimeAvailability extends Component
 
     public string $startTime = '';
 
-    public ?Appointment $appointment = null;
+    public ?int $appointmentID = null;
 
     public function mount(): void
     {
@@ -33,32 +33,41 @@ class DateTimeAvailability extends Component
 
     public function render()
     {
-        return view('livewire.date-time-availability');
+        $appointment = $this->appointmentID ? Appointment::find($this->appointmentID) : null;
+
+        return view('livewire.date-time-availability', [
+            'appointment' => $appointment
+        ]);
     }
 
-    public function save()
+    public function save(): void
     {
         $this->validate([
             'startTime' => 'required',
         ]);
 
-        $this->appointment = Appointment::create([
+        $this->appointmentID = Appointment::create([
             'start_time' => Carbon::parse($this->startTime),
             'reserved_at' => now()
-        ]);
+        ])->id;
     }
 
     public function confirmAppointment(): void
     {
-        $this->appointment->confirmed = true;
-        $this->appointment->save();
+        $appointment = Appointment::find($this->appointmentID);
+        if (!$appointment || Carbon::parse($appointment->reserved_at)->diffInMinutes(now()) > config('app.appointmentReservationTime')) {
+            $this->redirectRoute('dashboard');
+            return;
+        }
+        $appointment->confirmed = true;
+        $appointment->save();
 
-        $this->redirectRoute('appointment-confirmed', $this->appointment->id);
+        $this->redirectRoute('appointment-confirmed', $this->appointmentID);
     }
 
-    public function cancelAppointment()
+    public function cancelAppointment(): void
     {
-        Appointment::find($this->appointment->id)->delete();
+        Appointment::find($this->appointmentID)?->delete();
 
         $this->reset('appointment');
     }
